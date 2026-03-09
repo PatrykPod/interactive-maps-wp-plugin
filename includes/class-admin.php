@@ -8,6 +8,9 @@ class CGM_Admin {
 
         add_action('admin_post_custom_gps_maps_add_point', [$this, 'add_point']);
         add_action('admin_post_custom_gps_maps_delete_point', [$this, 'delete_point']);
+
+        // AJAX endpoint
+        add_action('wp_ajax_cgm_add_point', [$this, 'ajax_add_point']);
     }
 
 
@@ -65,5 +68,26 @@ class CGM_Admin {
 
         wp_redirect(admin_url('admin.php?page=custom-gps-maps'));
         exit;
+    }
+
+
+    /**
+     * AJAX: add point from canvas click
+     */
+    public function ajax_add_point() {
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error('Permission denied');
+        }
+
+        $id = CGM_DB::add_point([
+            'pointName' => '',
+            'x' => floatval($_POST['x']),
+            'y' => floatval($_POST['y'])
+        ]);
+
+        wp_send_json_success([
+            'id' => $id
+        ]);
     }
 }

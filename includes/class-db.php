@@ -11,11 +11,17 @@ class CGM_DB {
         );
     }
 
-    public static function add_point( $data ) {
+    public static function add_point($data) {
         global $wpdb;
         $table = $wpdb->prefix . 'points';
 
-        return $wpdb->insert( $table, $data );
+        $wpdb->insert($table, [
+            'pointName' => $data['pointName'],
+            'x' => $data['x'],
+            'y' => $data['y']
+        ]);
+
+        return $wpdb->insert_id;
     }
 
     public static function delete_point( $id ) {

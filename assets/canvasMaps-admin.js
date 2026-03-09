@@ -212,16 +212,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
     const handleResize = debounce(() => {
-        const container = canvas.parentElement;
-
-        const displayWidth = container.clientWidth;
-        const displayHeight = 600;
-
-        canvas.style.width = displayWidth + "px";
-        canvas.style.height = displayHeight + "px";
-
-        canvas.width = displayWidth;
-        canvas.height = displayHeight;
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
 
         MAX_ZOOM_OUT = Math.max(canvas.width / imageWidth, canvas.height / imageHeight);
         zoom = Math.max(zoom, MAX_ZOOM_OUT);
@@ -231,20 +223,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
     const handleLoad = () => {
-        const container = canvas.parentElement;
-
-        const displayWidth = container.clientWidth;
-        const displayHeight = 600;
-
-        canvas.style.width = displayWidth + "px";
-        canvas.style.height = displayHeight + "px";
-
-        canvas.width = displayWidth;
-        canvas.height = displayHeight;
-
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
         imageWidth = image.width;
         imageHeight = image.height;
-        MAX_ZOOM_OUT = Math.min(canvas.width / imageWidth, canvas.height / imageHeight);
+        MAX_ZOOM_OUT = Math.max(canvas.width / imageWidth, canvas.height / imageHeight);
 
         newLeft = (canvas.width - imageWidth * MAX_ZOOM_OUT) / 2;
         newTop = (canvas.height - imageHeight * MAX_ZOOM_OUT) / 2;
@@ -307,6 +290,85 @@ document.addEventListener("DOMContentLoaded", () => {
     
         console.log(`new Point: (${newPoint.x}, ${newPoint.y})`);
         }
+    });
+
+    function savePoint(x, y) {
+        fetch(CUSTOM_GPS_MAP.ajax, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded"
+            },
+            body: new URLSearchParams({
+                action: "cgm_add_point",
+                x: x,
+                y: y
+            })
+        })
+        .then(r => r.json())
+        .then(data => {
+
+            if (data.success) {
+
+                points.push({
+                    id: data.data.id,
+                    pointName: "",
+                    x: x,
+                    y: y
+                });
+
+                redrawCanvas();
+
+            } else {
+                console.error(data);
+            }
+
+        });
+    }
+
+    canvas.addEventListener("dblclick", function (event) {
+
+        const rect = canvas.getBoundingClientRect();
+
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+
+        const clickX = (event.clientX - rect.left) * scaleX;
+        const clickY = (event.clientY - rect.top) * scaleY;
+
+        const mapX = (clickX - newLeft) / zoom;
+        const mapY = (clickY - newTop) / zoom;
+
+        console.log("Saving point:", mapX, mapY);
+
+        fetch(CUSTOM_GPS_MAP.ajax, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded"
+            },
+            body: new URLSearchParams({
+                action: "cgm_add_point",
+                x: mapX,
+                y: mapY
+            })
+        })
+        .then(r => r.json())
+        .then(data => {
+
+            if (data.success) {
+
+                points.push({
+                    id: data.data.id,
+                    pointName: "",
+                    x: mapX,
+                    y: mapY
+                });
+
+                redrawCanvas();
+
+            }
+
+        });
+
     });
 
 });

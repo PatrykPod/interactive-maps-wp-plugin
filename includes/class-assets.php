@@ -24,11 +24,6 @@ class CGM_Assets {
             '1.0',
             true
         );
-
-        // wp_register_style(
-        //     'cgm-style',
-        //     CGM_URL . 'assets/reset.css'
-        // );
     }
 
     public function admin_assets($hook) {
@@ -64,7 +59,8 @@ class CGM_Assets {
             [
                 'points' => CGM_DB::get_points(),
                 'image'  => CGM_Helper::get_map_image_url(),
-                'admin'  => true
+                'admin'  => true,
+                'ajax'   => admin_url('admin-ajax.php')
             ]
         );
     }
