@@ -39,10 +39,14 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     function drawCirclePoint(context, color, pointObj, r) {
+        const opacity = Math.max(0, Math.min(100, pointObj.pinIconOpacity ?? 100)) / 100;
+        context.save();
+        context.globalAlpha = opacity;
         context.fillStyle = color;
         context.beginPath();
         context.arc(transX(pointObj.x), transY(pointObj.y), r * zoom * 1.25, 0, 2 * Math.PI);
         context.fill();
+        context.restore();
     }
 
     function drawIconPoint(pointObj) {
@@ -68,8 +72,11 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         const scale = (pointObj.pinIconScale || 50) / 100;
+        const opacity = Math.max(0, Math.min(100, pointObj.pinIconOpacity ?? 100)) / 100;
         const width = Math.max(pointObj._pinIconImage.naturalWidth * scale * zoom, 12 * zoom);
         const height = Math.max(pointObj._pinIconImage.naturalHeight * scale * zoom, 12 * zoom);
+        ctx.save();
+        ctx.globalAlpha = opacity;
         ctx.drawImage(
             pointObj._pinIconImage,
             transX(pointObj.x) - width / 2,
@@ -77,6 +84,7 @@ document.addEventListener("DOMContentLoaded", () => {
             width,
             height
         );
+        ctx.restore();
     }
 
     function drawPoints() {
@@ -299,6 +307,7 @@ document.addEventListener("DOMContentLoaded", () => {
             },
             body: new URLSearchParams({
                 action: "cgm_add_point",
+                map_id: CUSTOM_GPS_MAP.mapId || 0,
                 x: mapX,
                 y: mapY
             })
@@ -313,6 +322,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     y: mapY,
                     pinIconUrl: data.data.point.pinIconUrl || "",
                     pinIconScale: data.data.point.pinIconScale || 50,
+                    pinIconOpacity: data.data.point.pinIconOpacity ?? 100,
                     pinColor: data.data.point.pinColor || defaultPinColor,
                     url: data.data.point.url || "",
                     imageUrl: data.data.point.imageUrl || "",

@@ -67,10 +67,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
     function drawCirclePoint(context, color, pointObj, r) {
+        const opacity = Math.max(0, Math.min(100, pointObj.pinIconOpacity ?? 100)) / 100;
+        context.save();
+        context.globalAlpha = opacity;
         context.fillStyle = color; // Color of the pin
         context.beginPath();
         context.arc(transX(pointObj.x), transY(pointObj.y), r * zoom * 1.25, 0, 2 * Math.PI); // Draw a circle
         context.fill();
+        context.restore();
     }
 
     function drawIconPoint(pointObj) {
@@ -96,8 +100,11 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         const scale = (pointObj.pinIconScale || 50) / 100;
+        const opacity = Math.max(0, Math.min(100, pointObj.pinIconOpacity ?? 100)) / 100;
         const width = Math.max(pointObj._pinIconImage.naturalWidth * scale * zoom, 12 * zoom);
         const height = Math.max(pointObj._pinIconImage.naturalHeight * scale * zoom, 12 * zoom);
+        ctx.save();
+        ctx.globalAlpha = opacity;
         ctx.drawImage(
             pointObj._pinIconImage,
             transX(pointObj.x) - width / 2,
@@ -105,6 +112,7 @@ document.addEventListener("DOMContentLoaded", () => {
             width,
             height
         );
+        ctx.restore();
     }
 
 

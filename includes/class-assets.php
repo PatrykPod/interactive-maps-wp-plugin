@@ -26,15 +26,6 @@ class CGM_Assets {
             true
         );
 
-        wp_localize_script(
-            'cgm-map',
-            'CUSTOM_GPS_MAP',
-            [
-                'points' => CGM_DB::get_points(),
-                'image'  => CGM_Helper::get_map_image_url(),
-                'pinColor' => CGM_Helper::get_default_pin_color(),
-            ]
-        );
     }
 
     public function admin_assets($hook) {
@@ -71,12 +62,35 @@ class CGM_Assets {
             'cgm-map',
             'CUSTOM_GPS_MAP',
             [
-                'points' => CGM_DB::get_points(),
-                'image'  => CGM_Helper::get_map_image_url(),
-                'pinColor' => CGM_Helper::get_default_pin_color(),
+                'points' => $this->get_admin_points(),
+                'image'  => $this->get_admin_map_image_url(),
+                'pinColor' => $this->get_admin_default_pin_color(),
                 'admin'  => true,
-                'ajax'   => admin_url('admin-ajax.php')
+                'ajax'   => admin_url('admin-ajax.php'),
+                'mapId'  => $this->get_admin_map_id(),
             ]
         );
+    }
+
+    private function get_admin_map_id() {
+        return isset( $_GET['map_id'] ) ? (int) $_GET['map_id'] : 0;
+    }
+
+    private function get_admin_points() {
+        $map_id = $this->get_admin_map_id();
+
+        return $map_id > 0 ? CGM_DB::get_points( $map_id ) : [];
+    }
+
+    private function get_admin_map_image_url() {
+        $map_id = $this->get_admin_map_id();
+
+        return $map_id > 0 ? CGM_Helper::get_map_image_url( $map_id ) : '';
+    }
+
+    private function get_admin_default_pin_color() {
+        $map_id = $this->get_admin_map_id();
+
+        return $map_id > 0 ? CGM_Helper::get_default_pin_color( $map_id ) : '#ff0000';
     }
 }
