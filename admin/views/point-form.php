@@ -89,7 +89,7 @@ if ( $image_id ) {
                 <span class="cgm-range-value"><?php echo esc_html( $pin_icon_scale ); ?>%</span>
             </label>
         </p>
-        <p class="cgm-point-color-field <?php echo $pin_icon_id ? 'is-hidden' : ''; ?>">
+        <p class="cgm-point-color-field <?php echo $pin_icon_id > 0 ? 'is-hidden' : ''; ?>">
             <label>
                 Pin color:<br>
                 <input

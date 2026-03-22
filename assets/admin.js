@@ -22,8 +22,10 @@ jQuery(function ($) {
 
     function updatePinColorVisibility(form) {
         const pinIconField = form.find('.cgm-pin-icon-field');
-        const pinIconId = parseInt(pinIconField.find('input[name="point_pin_icon_id"]').val() || '0', 10);
-        const hasPinIcon = pinIconId > 0;
+        const pinIconInput = pinIconField.find('input[name="point_pin_icon_id"]');
+        const rawValue = (pinIconInput.val() || '').toString().trim();
+        const pinIconId = Number.parseInt(rawValue, 10);
+        const hasPinIcon = Number.isFinite(pinIconId) && pinIconId > 0;
 
         pinIconField.find('.cgm-point-color-field').toggleClass('is-hidden', hasPinIcon);
     }
