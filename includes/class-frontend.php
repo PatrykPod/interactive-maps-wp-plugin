@@ -20,7 +20,8 @@ class CGM_Frontend {
             'CUSTOM_GPS_MAP',
             [
                 'points' => CGM_DB::get_points(),
-                'image'  => CGM_Helper::get_map_image_url()
+                'image'  => CGM_Helper::get_map_image_url(),
+                'pinColor' => CGM_Helper::get_default_pin_color(),
             ]
         );
 

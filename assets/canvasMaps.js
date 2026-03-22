@@ -13,6 +13,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     image.src = CUSTOM_GPS_MAP.image;
     const points = CUSTOM_GPS_MAP.points || [];
+    const defaultPinColor = CUSTOM_GPS_MAP.pinColor || '#ff0000';
     const MAX_ZOOM_IN = 3; // Adjust this as needed for your application
     let MAX_ZOOM_OUT;
     let zoom = 1;
@@ -26,6 +27,7 @@ document.addEventListener("DOMContentLoaded", () => {
     let newLeft = null;
     let newTop = null;
     const audioIcon = CUSTOM_GPS_MAP.audioIcon;
+    let imageModal;
 
 
     /////////////////////////// INTERACTIVE POINTS  ////////////////////////////////
@@ -52,8 +54,9 @@ document.addEventListener("DOMContentLoaded", () => {
                         audio.play();
                     }
                     else if (point.url) {
-                        console.log(point.url);
-                        // window.open(point.url, '_self');
+                        window.open(point.url, '_blank', 'noopener');
+                    } else if (point.imageUrl) {
+                        openImageModal(point.imageUrl);
                     } else {
                         // WE CAN SET POPUP HERE
                     }
@@ -70,16 +73,61 @@ document.addEventListener("DOMContentLoaded", () => {
         context.fill();
     }
 
+    function drawIconPoint(pointObj) {
+        const pointPinColor = pointObj.pinColor || defaultPinColor;
+
+        if (!pointObj.pinIconUrl) {
+            drawCirclePoint(ctx, pointPinColor, pointObj, 26);
+            return;
+        }
+
+        if (!pointObj._pinIconImage) {
+            const iconImage = new Image();
+            iconImage.onload = () => redrawCanvas();
+            iconImage.src = pointObj.pinIconUrl;
+            pointObj._pinIconImage = iconImage;
+            drawCirclePoint(ctx, pointPinColor, pointObj, 26);
+            return;
+        }
+
+        if (!pointObj._pinIconImage.complete) {
+            drawCirclePoint(ctx, pointPinColor, pointObj, 26);
+            return;
+        }
+
+        const scale = (pointObj.pinIconScale || 50) / 100;
+        const width = Math.max(pointObj._pinIconImage.naturalWidth * scale * zoom, 12 * zoom);
+        const height = Math.max(pointObj._pinIconImage.naturalHeight * scale * zoom, 12 * zoom);
+        ctx.drawImage(
+            pointObj._pinIconImage,
+            transX(pointObj.x) - width / 2,
+            transY(pointObj.y) - height / 2,
+            width,
+            height
+        );
+    }
+
 
     function drawPoints() {
         points.forEach(point => {
-            drawCirclePoint(
-                ctx,
-                'rgba(255,0,0,.85)',
-                point,
-                26
-            );
+            drawIconPoint(point);
         });
+    }
+
+    function openImageModal(imageUrl) {
+        if (!imageModal) {
+            imageModal = document.createElement('div');
+            imageModal.innerHTML = '<div class="cgm-lightbox-backdrop" style="position:fixed;inset:0;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;z-index:9999;padding:24px;"><button type="button" style="position:absolute;top:20px;right:20px;background:#fff;border:none;border-radius:999px;width:40px;height:40px;font-size:24px;line-height:1;cursor:pointer;">&times;</button><img alt="" style="max-width:90vw;max-height:90vh;background:#fff;padding:10px;border-radius:8px;"></div>';
+            document.body.appendChild(imageModal);
+            imageModal.addEventListener('click', function (event) {
+                if (event.target === imageModal || event.target.classList.contains('cgm-lightbox-backdrop') || event.target.tagName === 'BUTTON') {
+                    imageModal.style.display = 'none';
+                }
+            });
+        }
+
+        imageModal.querySelector('img').src = imageUrl;
+        imageModal.style.display = 'block';
     }
 
 

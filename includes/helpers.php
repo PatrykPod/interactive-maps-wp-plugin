@@ -2,6 +2,19 @@
 
 class CGM_Helper {
 
+    public static function get_default_pin_color() {
+        $color = get_option( 'custom_gps_maps_default_pin_color', '#ff0000' );
+        $color = sanitize_hex_color( $color );
+
+        return $color ? $color : '#ff0000';
+    }
+
+    public static function set_default_pin_color( $color ) {
+        $color = sanitize_hex_color( $color );
+
+        update_option( 'custom_gps_maps_default_pin_color', $color ? $color : '#ff0000' );
+    }
+
     public static function get_map_image_id() {
         return (int) get_option('custom_gps_maps_image_id', 0);
     }

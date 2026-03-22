@@ -5,7 +5,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const ctx = canvas.getContext('2d');
     const image = new Image();
-    
+
     if (!CUSTOM_GPS_MAP.image) {
         console.warn('No map image configured');
         return;
@@ -13,7 +13,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     image.src = CUSTOM_GPS_MAP.image;
     const points = CUSTOM_GPS_MAP.points || [];
-    const MAX_ZOOM_IN = 3; // Adjust this as needed for your application
+    const defaultPinColor = CUSTOM_GPS_MAP.pinColor || '#ff0000';
+    const MAX_ZOOM_IN = 3;
     let MAX_ZOOM_OUT;
     let zoom = 1;
     let imageWidth = 0;
@@ -25,75 +26,127 @@ document.addEventListener("DOMContentLoaded", () => {
     let lastTop = 0;
     let newLeft = null;
     let newTop = null;
-    const audioIcon = CUSTOM_GPS_MAP.audioIcon;
+    const mapPointsSection = document.getElementById('cgm-map-points');
+    const pointGrid = mapPointsSection ? mapPointsSection.querySelector('.cgm-point-grid') : null;
+    const emptyPointsState = mapPointsSection ? mapPointsSection.querySelector('.cgm-empty-points-state') : null;
 
+    canvas.addEventListener('click', function (event) {
+        const clickedPoint = getClickedPoint(event);
 
-    /////////////////////////// INTERACTIVE POINTS  ////////////////////////////////
-
-    // Call the fetchAndProcessData function before the DOM starts loading
-    // fetchAndProcessData().then(() => {        
-        canvas.addEventListener('click', function (event) {
-            const rect = canvas.getBoundingClientRect();
-            const clickX = event.clientX - rect.left;
-            const clickY = event.clientY - rect.top;
-
-            points.forEach(point => {
-                const pointX = transX(point.x);
-                const pointY = transY(point.y);
-                const radius = 25 * zoom * 1.25;
-
-                // Check if the click is within the circle
-                if (Math.pow(clickX - pointX, 2) + Math.pow(clickY - pointY, 2) <= Math.pow(radius, 2)) {
-                    // Play the audio for the clicked point
-                    if (point.audioPath) {
-                        // audio.pause();
-                        // audio.currentTime = 0;
-                        const audio = new Audio(point.audioPath);
-                        audio.play();
-                    }
-                    else if (point.url) {
-                        console.log(point.url);
-                        // window.open(point.url, '_self');
-                    } else {
-                        // WE CAN SET POPUP HERE
-                    }
-                }
-            });
-        });
-    // });
-
+        if (clickedPoint) {
+            scrollToPointCard(clickedPoint.id);
+        }
+    });
 
     function drawCirclePoint(context, color, pointObj, r) {
-        context.fillStyle = color; // Color of the pin
+        context.fillStyle = color;
         context.beginPath();
-        context.arc(transX(pointObj.x), transY(pointObj.y), r * zoom * 1.25, 0, 2 * Math.PI); // Draw a circle
+        context.arc(transX(pointObj.x), transY(pointObj.y), r * zoom * 1.25, 0, 2 * Math.PI);
         context.fill();
     }
 
+    function drawIconPoint(pointObj) {
+        const pointPinColor = pointObj.pinColor || defaultPinColor;
+
+        if (!pointObj.pinIconUrl) {
+            drawCirclePoint(ctx, pointPinColor, pointObj, 26);
+            return;
+        }
+
+        if (!pointObj._pinIconImage) {
+            const iconImage = new Image();
+            iconImage.onload = () => redrawCanvas();
+            iconImage.src = pointObj.pinIconUrl;
+            pointObj._pinIconImage = iconImage;
+            drawCirclePoint(ctx, pointPinColor, pointObj, 26);
+            return;
+        }
+
+        if (!pointObj._pinIconImage.complete) {
+            drawCirclePoint(ctx, pointPinColor, pointObj, 26);
+            return;
+        }
+
+        const scale = (pointObj.pinIconScale || 50) / 100;
+        const width = Math.max(pointObj._pinIconImage.naturalWidth * scale * zoom, 12 * zoom);
+        const height = Math.max(pointObj._pinIconImage.naturalHeight * scale * zoom, 12 * zoom);
+        ctx.drawImage(
+            pointObj._pinIconImage,
+            transX(pointObj.x) - width / 2,
+            transY(pointObj.y) - height / 2,
+            width,
+            height
+        );
+    }
 
     function drawPoints() {
         points.forEach(point => {
-            drawCirclePoint(
-                ctx,
-                'rgba(255,0,0,.85)',
-                point,
-                26
-            );
+            drawIconPoint(point);
         });
     }
 
+    function getClickedPoint(event) {
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        const clickX = (event.clientX - rect.left) * scaleX;
+        const clickY = (event.clientY - rect.top) * scaleY;
 
-    // // ADD ICON IMAGE TO THE POINT:
-    // const img = new Image();
-    // img.src = pointObj.icon.src;
-    // img.onload = () => {
-    //   let imgWidth = 63*zoom*1.5;
-    //   let imgHeight = 62*zoom*1.5;
-    //   // REDRAW IS NECESSAR YTO DRAW A ICON ON THE POINT - STARTING AT CENTER OF CIRCLE POINT
-    //   ctx.drawImage(img,pointObj.x * zoom + newLeft, pointObj.y * zoom + newTop, imgWidth, imgHeight);
-    // };
-    /////////////////////////////////////////////////////////////////////////////////////////
+        for (const point of points) {
+            const pointX = transX(point.x);
+            const pointY = transY(point.y);
+            const radius = 25 * zoom * 1.25;
 
+            if (Math.pow(clickX - pointX, 2) + Math.pow(clickY - pointY, 2) <= Math.pow(radius, 2)) {
+                return point;
+            }
+        }
+
+        return null;
+    }
+
+    function scrollToPointCard(pointId) {
+        if (!pointId) {
+            return;
+        }
+
+        const pointCard = document.getElementById(`cgm-point-card-${pointId}`);
+
+        if (!pointCard) {
+            return;
+        }
+
+        document.querySelectorAll('.cgm-point-card.is-focused').forEach(card => {
+            card.classList.remove('is-focused');
+        });
+
+        pointCard.classList.add('is-focused');
+        const scrollTop = window.scrollY + pointCard.getBoundingClientRect().top - 24;
+
+        window.scrollTo({
+            top: Math.max(scrollTop, 0),
+            behavior: 'smooth',
+        });
+    }
+
+    function appendPointCard(pointData, cardHtml) {
+        if (!pointGrid || !cardHtml) {
+            return;
+        }
+
+        if (emptyPointsState) {
+            emptyPointsState.classList.add('is-hidden');
+        }
+
+        pointGrid.insertAdjacentHTML('beforeend', cardHtml);
+
+        if (window.jQuery) {
+            const $form = window.jQuery(`#cgm-point-card-${pointData.id} .cgm-point-form`);
+            const contentType = $form.find('.cgm-content-type-input').val() || 'url';
+            $form.attr('data-active-type', contentType);
+            window.jQuery(document).trigger('cgm:point-form-added', [$form[0]]);
+        }
+    }
 
     const debounce = (func, wait, immediate) => {
         let timeout;
@@ -109,27 +162,20 @@ document.addEventListener("DOMContentLoaded", () => {
         };
     };
 
-
-    /* CANVAS RENDERING */
     const drawImage = debounce(() => {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         const left = (canvas.width - imageWidth * zoom) / 2;
         const top = (canvas.height - imageHeight * zoom) / 2;
 
-        var visibleWidth = canvas.width / zoom;
-        var visibleHeight = canvas.height / zoom;
-
         ctx.drawImage(image, left, top, imageWidth * zoom, imageHeight * zoom);
         drawPoints();
     }, 20);
-
 
     function redrawCanvas() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.drawImage(image, newLeft, newTop, image.width * zoom, image.height * zoom);
         drawPoints();
     }
-
 
     const handleMouseDown = (event) => {
         dragging = true;
@@ -139,14 +185,11 @@ document.addEventListener("DOMContentLoaded", () => {
         lastTop = newTop;
     };
 
-
     const handleMouseMove = (event) => {
         if (!dragging) return;
 
         const deltaX = event.clientX - dragStartX;
         const deltaY = event.clientY - dragStartY;
-        const left = (canvas.width - imageWidth * zoom) / 2;
-        const top = (canvas.height - imageHeight * zoom) / 2;
 
         newLeft = Math.max(Math.min(lastLeft + deltaX, 0), canvas.width - imageWidth * zoom);
         newTop = Math.max(Math.min(lastTop + deltaY, 0), canvas.height - imageHeight * zoom);
@@ -154,42 +197,24 @@ document.addEventListener("DOMContentLoaded", () => {
         redrawCanvas();
     };
 
-
-    const handleMouseUp = (event) => {
+    const handleMouseUp = () => {
         dragging = false;
         redrawCanvas();
     };
 
-
     const handleWheel = (event) => {
-        event.preventDefault(); // Prevent the default scroll behavior
+        event.preventDefault();
 
-        var delta = event.deltaY ? -event.deltaY : event.wheelDelta ? event.wheelDelta : -event.detail;
+        const delta = event.deltaY ? -event.deltaY : event.wheelDelta ? event.wheelDelta : -event.detail;
+        const zoomFactor = delta > 0 ? 1.1 : 0.9;
 
-        var zoomFactor = delta > 0 ? 1.1 : 0.9;
-
-        var mouseX = event.clientX;
-        var mouseY = event.clientY;
-
-        zoomAt(mouseX, mouseY, zoomFactor);
+        zoomAt(event.clientX, event.clientY, zoomFactor);
     };
-
-
-    function getPoint(x, y) {
-        const rect = canvas.getBoundingClientRect();
-        return {
-            x: (x - rect.left) / zoom + rect.left / zoom - rect.width / (2 * zoom),
-            y: (y - rect.top) / zoom + rect.top / zoom - rect.height / (2 * zoom)
-        };
-    }
-
 
     function zoomAt(mouseX, mouseY, zoomFactor) {
         const canvasRect = canvas.getBoundingClientRect();
-
         const canvasX = (mouseX - canvasRect.left) * (canvas.width / canvasRect.width);
         const canvasY = (mouseY - canvasRect.top) * (canvas.height / canvasRect.height);
-
         const previousZoom = zoom;
 
         zoom = Math.max(MAX_ZOOM_OUT, Math.min(zoom * zoomFactor, MAX_ZOOM_IN));
@@ -210,7 +235,6 @@ document.addEventListener("DOMContentLoaded", () => {
         redrawCanvas();
     }
 
-
     const handleResize = debounce(() => {
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
@@ -220,7 +244,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
         redrawCanvas();
     }, 30);
-
 
     const handleLoad = () => {
         canvas.width = window.innerWidth;
@@ -237,8 +260,6 @@ document.addEventListener("DOMContentLoaded", () => {
         drawPoints();
     };
 
-
-    // UTILS
     canvas.addEventListener('mousedown', handleMouseDown);
     canvas.addEventListener('mousemove', handleMouseMove);
     canvas.addEventListener('mouseup', handleMouseUp);
@@ -247,14 +268,13 @@ document.addEventListener("DOMContentLoaded", () => {
     image.addEventListener('load', handleLoad);
 
     function transX(x) {
-        return x * zoom + newLeft
-    }
-    function transY(y) {
-        return y * zoom + newTop
+        return x * zoom + newLeft;
     }
 
-    //////////////////////// NO CANVAS ELEMENTS /////////////////////////////////////////////////////////////////
-    // HANDLE ZOOMING BUTTONS:
+    function transY(y) {
+        return y * zoom + newTop;
+    }
+
     document.getElementById('zoomInButton').addEventListener('click', function () {
         zoomAt(window.innerWidth / 2, window.innerHeight / 2, 1.1);
     });
@@ -263,82 +283,14 @@ document.addEventListener("DOMContentLoaded", () => {
         zoomAt(window.innerWidth / 2, window.innerHeight / 2, 0.9);
     });
 
-
-
-    ///////////////////////
-    //// ADMIN PANEL
-    ///////////////////////
-    
-    // Check if the checkbox with the class 'admin-panel' is checked
-    const adminPanelCheckbox = document.querySelector('.admin-panel');
-
-    // Add a click event listener to the canvas
-    canvas.addEventListener('click', function (event) {
-        if (adminPanelCheckbox && adminPanelCheckbox.checked) {
-        const rect = canvas.getBoundingClientRect();
-        const x = event.clientX - rect.left;
-        const y = event.clientY - rect.top;
-    
-        // Create a new point object with the clicked coordinates and 'false' values
-        const newPoint = {
-            x: x,
-            y: y,
-            url: false,
-            icon: false,
-            audioPath: false
-        };
-    
-        console.log(`new Point: (${newPoint.x}, ${newPoint.y})`);
-        }
-    });
-
-    function savePoint(x, y) {
-        fetch(CUSTOM_GPS_MAP.ajax, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/x-www-form-urlencoded"
-            },
-            body: new URLSearchParams({
-                action: "cgm_add_point",
-                x: x,
-                y: y
-            })
-        })
-        .then(r => r.json())
-        .then(data => {
-
-            if (data.success) {
-
-                points.push({
-                    id: data.data.id,
-                    pointName: "",
-                    x: x,
-                    y: y
-                });
-
-                redrawCanvas();
-
-            } else {
-                console.error(data);
-            }
-
-        });
-    }
-
     canvas.addEventListener("dblclick", function (event) {
-
         const rect = canvas.getBoundingClientRect();
-
         const scaleX = canvas.width / rect.width;
         const scaleY = canvas.height / rect.height;
-
         const clickX = (event.clientX - rect.left) * scaleX;
         const clickY = (event.clientY - rect.top) * scaleY;
-
         const mapX = (clickX - newLeft) / zoom;
         const mapY = (clickY - newTop) / zoom;
-
-        console.log("Saving point:", mapX, mapY);
 
         fetch(CUSTOM_GPS_MAP.ajax, {
             method: "POST",
@@ -353,22 +305,27 @@ document.addEventListener("DOMContentLoaded", () => {
         })
         .then(r => r.json())
         .then(data => {
-
             if (data.success) {
-
                 points.push({
-                    id: data.data.id,
-                    pointName: "",
+                    id: data.data.point.id,
+                    pointName: data.data.point.pointName,
                     x: mapX,
-                    y: mapY
+                    y: mapY,
+                    pinIconUrl: data.data.point.pinIconUrl || "",
+                    pinIconScale: data.data.point.pinIconScale || 50,
+                    pinColor: data.data.point.pinColor || defaultPinColor,
+                    url: data.data.point.url || "",
+                    imageUrl: data.data.point.imageUrl || "",
+                    audioPath: data.data.point.audioPath || ""
                 });
 
+                appendPointCard(data.data.point, data.data.cardHtml || "");
                 redrawCanvas();
 
+                window.setTimeout(function () {
+                    scrollToPointCard(data.data.id);
+                }, 60);
             }
-
         });
-
     });
-
 });
